@@ -58,6 +58,12 @@ interface BlueBubblesApi {
   ): Response<ByteArray>
 
   @Multipart
+  @POST("api/v1/attachment")
+  suspend fun uploadAttachment(
+    @Part file: okhttp3.MultipartBody.Part
+  ): Response<UploadAttachmentResponse>
+
+  @Multipart
   @POST("api/v1/message/attachment")
   suspend fun sendAttachment(
     @Part file: okhttp3.MultipartBody.Part,
@@ -86,7 +92,21 @@ data class SendMessageRequest(
   val tempGuid: String? = null,
   val subject: String? = null,
   val effectId: String? = null,
-  val replyToGuid: String? = null
+  val replyToGuid: String? = null,
+  val selectedMessageGuid: String? = null // For attachments
+)
+
+data class UploadAttachmentResponse(
+  val status: Int,
+  val message: String,
+  val data: UploadedAttachmentData?
+)
+
+data class UploadedAttachmentData(
+  val guid: String,
+  val mimeType: String?,
+  val transferName: String?,
+  val totalBytes: Long?
 )
 
 data class ReactionRequest(

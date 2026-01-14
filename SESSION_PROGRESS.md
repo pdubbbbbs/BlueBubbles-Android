@@ -64,10 +64,10 @@ A native Android client for BlueBubbles iMessage bridge server, featuring:
 ## Pending Tasks
 
 ### High Priority
-- [ ] Room database for offline caching
-- [ ] WebSocket connection for real-time updates
-- [ ] QR code scanner for server setup
-- [ ] Attachment sending/receiving
+- [x] Room database for offline caching
+- [x] WebSocket connection for real-time updates
+- [x] QR code scanner for server setup
+- [x] Attachment sending/receiving (images, videos, files)
 
 ### Medium Priority
 - [ ] Typing indicators

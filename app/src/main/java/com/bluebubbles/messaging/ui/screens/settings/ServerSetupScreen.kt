@@ -19,6 +19,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
+import com.bluebubbles.messaging.ui.components.QrCodeScannerSheet
 import com.bluebubbles.messaging.ui.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -34,6 +35,25 @@ fun ServerSetupScreen(
   var showPassword by remember { mutableStateOf(false) }
   var isTestingConnection by remember { mutableStateOf(false) }
   var connectionStatus by remember { mutableStateOf<ConnectionTestResult?>(null) }
+  var showQrScanner by remember { mutableStateOf(false) }
+
+  // QR Scanner fullscreen overlay
+  if (showQrScanner) {
+    QrCodeScannerSheet(
+      onDismiss = { showQrScanner = false },
+      onConfigScanned = { config ->
+        serverUrl = config.serverUrl
+        password = config.password
+        port = config.port.toString()
+        useHttps = config.useHttps
+        showQrScanner = false
+        connectionStatus = ConnectionTestResult(
+          success = true,
+          message = "Configuration imported from QR code"
+        )
+      }
+    )
+  }
 
   Scaffold(
     topBar = {
@@ -100,7 +120,46 @@ fun ServerSetupScreen(
             style = MaterialTheme.typography.bodySmall,
             color = TextMuted
           )
+          Spacer(modifier = Modifier.height(16.dp))
+          Button(
+            onClick = { showQrScanner = true },
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp),
+            colors = ButtonDefaults.buttonColors(
+              containerColor = CyanPrimary.copy(alpha = 0.15f),
+              contentColor = CyanPrimary
+            )
+          ) {
+            Icon(
+              imageVector = Icons.Default.QrCodeScanner,
+              contentDescription = null,
+              modifier = Modifier.size(20.dp)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text("Scan QR Code", fontWeight = FontWeight.SemiBold)
+          }
         }
+      }
+
+      // Divider with "or" text
+      Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically
+      ) {
+        HorizontalDivider(
+          modifier = Modifier.weight(1f),
+          color = PurpleDark
+        )
+        Text(
+          text = "  or enter manually  ",
+          style = MaterialTheme.typography.bodySmall,
+          color = TextMuted
+        )
+        HorizontalDivider(
+          modifier = Modifier.weight(1f),
+          color = PurpleDark
+        )
       }
 
       // Server URL

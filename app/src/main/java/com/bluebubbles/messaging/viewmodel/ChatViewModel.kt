@@ -6,10 +6,13 @@ import androidx.lifecycle.viewModelScope
 import com.bluebubbles.messaging.data.models.Conversation
 import com.bluebubbles.messaging.data.models.Message
 import com.bluebubbles.messaging.data.repository.ChatRepository
+import com.bluebubbles.messaging.data.repository.ServerRepository
+import com.bluebubbles.messaging.ui.components.SelectedAttachment
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -22,12 +25,15 @@ data class ChatUiState(
   val error: String? = null,
   val messageText: String = "",
   val replyToMessage: Message? = null,
-  val hasMoreMessages: Boolean = true
+  val hasMoreMessages: Boolean = true,
+  val serverUrl: String? = null,
+  val serverPassword: String? = null
 )
 
 @HiltViewModel
 class ChatViewModel @Inject constructor(
   private val chatRepository: ChatRepository,
+  private val serverRepository: ServerRepository,
   savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
@@ -40,8 +46,21 @@ class ChatViewModel @Inject constructor(
   private val pageSize = 50
 
   init {
+    loadServerConfig()
     if (chatGuid.isNotEmpty()) {
       loadMessages()
+    }
+  }
+
+  private fun loadServerConfig() {
+    viewModelScope.launch {
+      val config = serverRepository.getServerConfig().first()
+      config?.let {
+        _uiState.value = _uiState.value.copy(
+          serverUrl = it.serverUrl,
+          serverPassword = it.password
+        )
+      }
     }
   }
 
@@ -96,17 +115,37 @@ class ChatViewModel @Inject constructor(
     _uiState.value = _uiState.value.copy(messageText = text)
   }
 
-  fun sendMessage() {
+  fun sendMessage(attachments: List<SelectedAttachment> = emptyList()) {
     val text = _uiState.value.messageText.trim()
-    if (text.isEmpty() || _uiState.value.isSending) return
+    if (text.isEmpty() && attachments.isEmpty()) return
+    if (_uiState.value.isSending) return
 
     viewModelScope.launch {
       _uiState.value = _uiState.value.copy(isSending = true, messageText = "")
 
+      // Upload attachments first if any
+      val attachmentGuids = mutableListOf<String>()
+      for (attachment in attachments) {
+        chatRepository.uploadAttachment(attachment)
+          .onSuccess { guid ->
+            attachmentGuids.add(guid)
+          }
+          .onFailure { error ->
+            _uiState.value = _uiState.value.copy(
+              isSending = false,
+              messageText = text,
+              error = "Failed to upload attachment: ${error.message}"
+            )
+            return@launch
+          }
+      }
+
+      // Send message with attachments
       chatRepository.sendMessage(
         chatGuid = chatGuid,
-        text = text,
-        replyToGuid = _uiState.value.replyToMessage?.guid
+        text = text.ifEmpty { null },
+        replyToGuid = _uiState.value.replyToMessage?.guid,
+        attachmentGuids = attachmentGuids.ifEmpty { null }
       )
         .onSuccess { message ->
           _uiState.value = _uiState.value.copy(
@@ -118,7 +157,7 @@ class ChatViewModel @Inject constructor(
         .onFailure { error ->
           _uiState.value = _uiState.value.copy(
             isSending = false,
-            messageText = text, // Restore text on failure
+            messageText = text,
             error = error.message ?: "Failed to send message"
           )
         }

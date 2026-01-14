@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+  <style name="Theme.BlueBubbles" parent="Theme.Material3.Dark.NoActionBar">
+    <!-- Primary -->
+    <item name="colorPrimary">@color/cyan_primary</item>
+    <item name="colorOnPrimary">@color/background_dark</item>
+    <item name="colorPrimaryContainer">@color/cyan_dark</item>
+    <item name="colorOnPrimaryContainer">@color/text_primary</item>
+
+    <!-- Secondary -->
+    <item name="colorSecondary">@color/purple_primary</item>
+    <item name="colorOnSecondary">@color/text_primary</item>
+    <item name="colorSecondaryContainer">@color/purple_dark</item>
+    <item name="colorOnSecondaryContainer">@color/text_primary</item>
+
+    <!-- Background -->
+    <item name="android:colorBackground">@color/background_dark</item>
+    <item name="colorOnBackground">@color/text_primary</item>
+
+    <!-- Surface -->
+    <item name="colorSurface">@color/surface_dark</item>
+    <item name="colorOnSurface">@color/text_primary</item>
+    <item name="colorSurfaceVariant">@color/card_background</item>
+    <item name="colorOnSurfaceVariant">@color/text_secondary</item>
+
+    <!-- Error -->
+    <item name="colorError">@color/red_accent</item>
+    <item name="colorOnError">@color/text_primary</item>
+
+    <!-- Status Bar -->
+    <item name="android:statusBarColor">@color/background_dark</item>
+    <item name="android:navigationBarColor">@color/background_dark</item>
+    <item name="android:windowLightStatusBar">false</item>
+  </style>
+</resources>

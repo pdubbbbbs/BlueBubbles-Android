@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+  <string name="app_name">BlueBubbles</string>
+  <string name="action_settings">Settings</string>
+
+  <!-- Connection Status -->
+  <string name="status_connected">Connected</string>
+  <string name="status_connecting">Connecting…</string>
+  <string name="status_disconnected">Disconnected</string>
+
+  <!-- Server Setup -->
+  <string name="server_setup_title">Server Setup</string>
+  <string name="server_url_label">Server URL</string>
+  <string name="server_url_hint">yourserver.ngrok.io or 192.168.1.100</string>
+  <string name="server_port_label">Port</string>
+  <string name="server_password_label">Password</string>
+  <string name="server_use_https">Use HTTPS</string>
+  <string name="test_connection">Test Connection</string>
+  <string name="save_and_connect">Save &amp; Connect</string>
+
+  <!-- Chat -->
+  <string name="message_hint">iMessage</string>
+  <string name="send">Send</string>
+  <string name="replying_to">Replying to</string>
+
+  <!-- Settings -->
+  <string name="settings_connection">Connection</string>
+  <string name="settings_appearance">Appearance</string>
+  <string name="settings_privacy">Privacy &amp; Security</string>
+  <string name="settings_about">About</string>
+
+  <!-- Empty States -->
+  <string name="no_conversations">No conversations yet</string>
+  <string name="no_conversations_subtitle">Your iMessage conversations will appear here</string>
+
+  <!-- Errors -->
+  <string name="error_connection_failed">Connection failed</string>
+  <string name="error_send_failed">Failed to send message</string>
+  <string name="retry">Retry</string>
+</resources>

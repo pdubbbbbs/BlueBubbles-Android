@@ -59,12 +59,15 @@ data class Message(
   val associatedMessages: List<AssociatedMessage> = emptyList(),
   val threadOriginatorGuid: String? = null,
   val hasReactions: Boolean = false,
-  val error: Int = 0
+  val error: Int = 0,
+  val expressiveSendStyleId: String? = null // iMessage effect ID
 ) {
   val isDelivered: Boolean get() = dateDelivered != null
   val isRead: Boolean get() = dateRead != null
   val hasError: Boolean get() = error != 0
   val hasAttachments: Boolean get() = attachments.isNotEmpty()
+  val hasBubbleEffect: Boolean get() = expressiveSendStyleId?.contains("expressivesend") == true
+  val hasScreenEffect: Boolean get() = expressiveSendStyleId?.contains("effect.CK") == true
 }
 
 data class Attachment(

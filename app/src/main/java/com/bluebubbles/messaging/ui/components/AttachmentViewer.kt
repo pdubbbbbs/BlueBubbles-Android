@@ -49,6 +49,14 @@ fun MessageAttachment(
   val attachmentUrl = buildAttachmentUrl(attachment.guid, serverUrl, password)
 
   when {
+    attachment.isSticker -> {
+      InlineSticker(
+        attachment = attachment,
+        serverUrl = serverUrl,
+        password = password,
+        isFromMe = isFromMe
+      )
+    }
     attachment.isImage -> {
       ImageAttachment(
         url = attachmentUrl,
@@ -66,9 +74,9 @@ fun MessageAttachment(
       )
     }
     attachment.isAudio -> {
-      AudioAttachment(
-        url = attachmentUrl,
-        fileName = attachment.fileName,
+      AudioMessagePlayer(
+        audioUrl = attachmentUrl,
+        duration = null, // Will be determined by player
         isFromMe = isFromMe
       )
     }

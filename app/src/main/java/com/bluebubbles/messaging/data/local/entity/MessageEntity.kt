@@ -41,7 +41,8 @@ data class MessageEntity(
   val hasReactions: Boolean = false,
   val error: Int = 0,
   val isSending: Boolean = false,
-  val tempGuid: String? = null
+  val tempGuid: String? = null,
+  val expressiveSendStyleId: String? = null
 )
 
 fun MessageEntity.toMessage(): Message {
@@ -62,7 +63,8 @@ fun MessageEntity.toMessage(): Message {
     attachments = emptyList(), // Parsed separately from JSON
     threadOriginatorGuid = threadOriginatorGuid,
     hasReactions = hasReactions,
-    error = error
+    error = error,
+    expressiveSendStyleId = expressiveSendStyleId
   )
 }
 
@@ -81,6 +83,7 @@ fun Message.toEntity(chatGuid: String, attachmentsJson: String? = null): Message
     attachmentsJson = attachmentsJson,
     threadOriginatorGuid = threadOriginatorGuid,
     hasReactions = hasReactions,
-    error = error
+    error = error,
+    expressiveSendStyleId = expressiveSendStyleId
   )
 }

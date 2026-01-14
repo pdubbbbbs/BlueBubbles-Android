@@ -46,6 +46,8 @@ import com.bluebubbles.messaging.data.models.Attachment
 import com.bluebubbles.messaging.data.models.Message
 import com.bluebubbles.messaging.data.models.ReactionType
 import com.bluebubbles.messaging.ui.components.*
+import com.bluebubbles.messaging.ui.components.BubbleEffect
+import com.bluebubbles.messaging.ui.components.ScreenEffect
 import com.bluebubbles.messaging.ui.theme.*
 import com.bluebubbles.messaging.viewmodel.ChatViewModel
 import java.text.SimpleDateFormat
@@ -63,6 +65,22 @@ fun ChatScreen(
   var selectedAttachments by remember { mutableStateOf<List<SelectedAttachment>>(emptyList()) }
   var fullscreenAttachment by remember { mutableStateOf<Attachment?>(null) }
   var reactionPickerMessage by remember { mutableStateOf<Message?>(null) }
+  var activeScreenEffect by remember { mutableStateOf<ScreenEffect?>(null) }
+  var newMessageGuids by remember { mutableStateOf<Set<String>>(emptySet()) }
+
+  // Track new messages for effect animation
+  LaunchedEffect(uiState.messages) {
+    val latestMessage = uiState.messages.firstOrNull()
+    if (latestMessage != null && latestMessage.guid !in newMessageGuids) {
+      newMessageGuids = newMessageGuids + latestMessage.guid
+      // Trigger screen effect if message has one
+      latestMessage.expressiveSendStyleId?.let { effectId ->
+        ScreenEffect.fromId(effectId)?.let { effect ->
+          activeScreenEffect = effect
+        }
+      }
+    }
+  }
 
   // Attachment picker bottom sheet
   if (showAttachmentPicker) {
@@ -122,6 +140,12 @@ fun ChatScreen(
       }
     }
   }
+
+  // Screen effect overlay
+  ScreenEffectOverlay(
+    effect = activeScreenEffect,
+    onEffectComplete = { activeScreenEffect = null }
+  )
 
   Scaffold(
     topBar = {
@@ -232,13 +256,15 @@ fun ChatScreen(
             items = uiState.messages,
             key = { it.guid }
           ) { message ->
+            val isNewMessage = message.guid in newMessageGuids
             MessageBubble(
               message = message,
               serverUrl = uiState.serverUrl ?: "",
               serverPassword = uiState.serverPassword ?: "",
               onLongPress = { reactionPickerMessage = message },
               onDoubleTap = { viewModel.setReplyToMessage(message) },
-              onAttachmentClick = { fullscreenAttachment = it }
+              onAttachmentClick = { fullscreenAttachment = it },
+              isNewMessage = isNewMessage
             )
           }
 
@@ -280,18 +306,24 @@ fun MessageBubble(
   serverPassword: String,
   onLongPress: () -> Unit,
   onDoubleTap: () -> Unit,
-  onAttachmentClick: (Attachment) -> Unit
+  onAttachmentClick: (Attachment) -> Unit,
+  isNewMessage: Boolean = false
 ) {
   val isFromMe = message.isFromMe
   val hasReactions = message.associatedMessages.isNotEmpty()
+  val bubbleEffect = BubbleEffect.fromId(message.expressiveSendStyleId)
 
-  Box(
-    modifier = Modifier.fillMaxWidth(),
-    contentAlignment = if (isFromMe) Alignment.CenterEnd else Alignment.CenterStart
+  BubbleEffectWrapper(
+    effect = bubbleEffect,
+    isNewMessage = isNewMessage
   ) {
-    Column(
-      horizontalAlignment = if (isFromMe) Alignment.End else Alignment.Start
+    Box(
+      modifier = Modifier.fillMaxWidth(),
+      contentAlignment = if (isFromMe) Alignment.CenterEnd else Alignment.CenterStart
     ) {
+      Column(
+        horizontalAlignment = if (isFromMe) Alignment.End else Alignment.Start
+      ) {
       // Attachments
       if (message.hasAttachments) {
         Column(

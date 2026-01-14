@@ -90,7 +90,8 @@ data class MessageDto(
   val attachments: List<AttachmentDto>?,
   @SerializedName("associated_message_guid") val associatedMessageGuid: String?,
   @SerializedName("associated_message_type") val associatedMessageType: Int?,
-  val error: Int?
+  val error: Int?,
+  @SerializedName("expressive_send_style_id") val expressiveSendStyleId: String?
 )
 
 data class AttachmentDto(

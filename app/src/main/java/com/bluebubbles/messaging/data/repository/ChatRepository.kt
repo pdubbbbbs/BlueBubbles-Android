@@ -173,7 +173,8 @@ class ChatRepository @Inject constructor(
                 isSticker = att.isSticker ?: false
               )
             } ?: emptyList(),
-            error = msgDto.error ?: 0
+            error = msgDto.error ?: 0,
+            expressiveSendStyleId = msgDto.expressiveSendStyleId
           )
         }
 

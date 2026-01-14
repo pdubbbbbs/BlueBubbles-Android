@@ -81,6 +81,22 @@ class SocketManager @Inject constructor() {
     webSocket?.send("42$payload")
   }
 
+  fun sendTypingIndicator(chatGuid: String, isTyping: Boolean) {
+    val data = mapOf(
+      "chatGuid" to chatGuid,
+      "display" to isTyping
+    )
+    sendMessage("typing-indicator", data)
+  }
+
+  fun sendReadReceipt(chatGuid: String, messageGuid: String) {
+    val data = mapOf(
+      "chatGuid" to chatGuid,
+      "messageGuid" to messageGuid
+    )
+    sendMessage("mark-chat-read", data)
+  }
+
   private fun createWebSocketListener() = object : WebSocketListener() {
 
     override fun onOpen(webSocket: WebSocket, response: Response) {

@@ -32,6 +32,7 @@ import java.util.*
 fun ConversationsScreen(
   onConversationClick: (String) -> Unit,
   onSettingsClick: () -> Unit,
+  onSearchClick: () -> Unit,
   viewModel: ConversationsViewModel = hiltViewModel()
 ) {
   val uiState by viewModel.uiState.collectAsState()
@@ -52,6 +53,9 @@ fun ConversationsScreen(
           }
         },
         actions = {
+          IconButton(onClick = onSearchClick) {
+            Icon(Icons.Default.Search, "Search")
+          }
           IconButton(onClick = { viewModel.refresh() }) {
             Icon(Icons.Default.Refresh, "Refresh")
           }

@@ -8,6 +8,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.bluebubbles.messaging.ui.screens.chat.ChatScreen
 import com.bluebubbles.messaging.ui.screens.conversations.ConversationsScreen
+import com.bluebubbles.messaging.ui.screens.search.SearchScreen
 import com.bluebubbles.messaging.ui.screens.settings.SettingsScreen
 import com.bluebubbles.messaging.ui.screens.settings.ServerSetupScreen
 
@@ -16,6 +17,7 @@ sealed class Screen(val route: String) {
   object Chat : Screen("chat/{chatGuid}") {
     fun createRoute(chatGuid: String) = "chat/$chatGuid"
   }
+  object Search : Screen("search")
   object Settings : Screen("settings")
   object ServerSetup : Screen("server_setup")
 }
@@ -35,6 +37,18 @@ fun BlueBubblesNavHost() {
         },
         onSettingsClick = {
           navController.navigate(Screen.Settings.route)
+        },
+        onSearchClick = {
+          navController.navigate(Screen.Search.route)
+        }
+      )
+    }
+
+    composable(Screen.Search.route) {
+      SearchScreen(
+        onBackClick = { navController.popBackStack() },
+        onMessageClick = { chatGuid, _ ->
+          navController.navigate(Screen.Chat.createRoute(chatGuid))
         }
       )
     }

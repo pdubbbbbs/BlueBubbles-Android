@@ -300,6 +300,26 @@ class ChatRepository @Inject constructor(
     }
   }
 
+  // ==================== REACTIONS ====================
+
+  suspend fun sendReaction(chatGuid: String, messageGuid: String, reactionType: ReactionType): Result<Unit> {
+    return try {
+      val request = com.bluebubbles.messaging.data.api.ReactionRequest(
+        chatGuid = chatGuid,
+        messageGuid = messageGuid,
+        reaction = reactionType.value
+      )
+      val response = api.sendReaction(request)
+      if (response.isSuccessful) {
+        Result.success(Unit)
+      } else {
+        Result.failure(Exception("Failed to send reaction: ${response.message()}"))
+      }
+    } catch (e: Exception) {
+      Result.failure(e)
+    }
+  }
+
   // ==================== MARK READ ====================
 
   suspend fun markChatRead(chatGuid: String): Result<Unit> {

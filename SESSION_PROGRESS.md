@@ -1,8 +1,9 @@
 # BlueBubbles Android App - Development Progress
 
 **Project:** BlueBubbles Android Client
-**Status:** IN PROGRESS - Core Structure Complete
+**Status:** IN PROGRESS - Medium Priority Features Complete
 **Last Updated:** 2026-01-13
+**Session:** Message Reactions UI Integration
 **Developer:** Philip S. Wright (pdubbbbbs)
 
 ---
@@ -69,14 +70,14 @@ A native Android client for BlueBubbles iMessage bridge server, featuring:
 - [x] QR code scanner for server setup
 - [x] Attachment sending/receiving (images, videos, files)
 
-### Medium Priority
-- [ ] Typing indicators
-- [ ] Read receipts sync
-- [ ] Contact integration
-- [ ] Message search
+### Medium Priority (COMPLETED)
+- [x] Typing indicators (send and receive)
+- [x] Read receipts sync
+- [x] Contact integration with Android contacts
+- [x] Message search functionality
 
 ### Low Priority
-- [ ] Message reactions UI
+- [x] Message reactions UI (tapbacks)
 - [ ] Message effects (slam, loud, etc.)
 - [ ] Sticker support
 - [ ] Audio messages
@@ -107,19 +108,37 @@ BlueBubbles-Android/
 │   │   │   │   │   └── dto/ApiResponses.kt
 │   │   │   │   ├── firebase/
 │   │   │   │   │   └── BlueBubblesFirebaseService.kt
+│   │   │   │   ├── local/
+│   │   │   │   │   ├── dao/
+│   │   │   │   │   │   ├── ConversationDao.kt
+│   │   │   │   │   │   └── MessageDao.kt
+│   │   │   │   │   ├── entity/
+│   │   │   │   │   │   ├── ConversationEntity.kt
+│   │   │   │   │   │   └── MessageEntity.kt
+│   │   │   │   │   └── BlueBubblesDatabase.kt
 │   │   │   │   ├── models/
-│   │   │   │   │   ├── Conversation.kt
+│   │   │   │   │   ├── Conversation.kt (Message, Attachment, AssociatedMessage, ReactionType)
 │   │   │   │   │   └── ServerConfig.kt
-│   │   │   │   └── repository/
-│   │   │   │       ├── ChatRepository.kt
-│   │   │   │       └── ServerRepository.kt
+│   │   │   │   ├── repository/
+│   │   │   │   │   ├── ChatRepository.kt
+│   │   │   │   │   ├── ContactRepository.kt
+│   │   │   │   │   └── ServerRepository.kt
+│   │   │   │   └── socket/
+│   │   │   │       ├── SocketEventHandler.kt
+│   │   │   │       └── SocketManager.kt
 │   │   │   ├── di/
 │   │   │   │   └── AppModule.kt
 │   │   │   ├── ui/
 │   │   │   │   ├── BlueBubblesNavHost.kt
+│   │   │   │   ├── components/
+│   │   │   │   │   ├── AttachmentPicker.kt
+│   │   │   │   │   ├── AttachmentViewer.kt
+│   │   │   │   │   ├── MessageReactions.kt
+│   │   │   │   │   └── QrCodeScanner.kt
 │   │   │   │   ├── screens/
 │   │   │   │   │   ├── chat/ChatScreen.kt
 │   │   │   │   │   ├── conversations/ConversationsScreen.kt
+│   │   │   │   │   ├── search/SearchScreen.kt
 │   │   │   │   │   └── settings/
 │   │   │   │   │       ├── SettingsScreen.kt
 │   │   │   │   │       └── ServerSetupScreen.kt
@@ -129,10 +148,13 @@ BlueBubbles-Android/
 │   │   │   │       └── Type.kt
 │   │   │   └── viewmodel/
 │   │   │       ├── ChatViewModel.kt
-│   │   │       └── ConversationsViewModel.kt
+│   │   │       ├── ConversationsViewModel.kt
+│   │   │       └── SearchViewModel.kt
 │   │   ├── res/
 │   │   │   ├── drawable/
 │   │   │   ├── mipmap-anydpi-v26/
+│   │   │   ├── xml/
+│   │   │   │   └── file_paths.xml
 │   │   │   └── values/
 │   │   └── AndroidManifest.xml
 │   ├── build.gradle.kts
@@ -171,7 +193,9 @@ BlueBubbles-Android/
 
 ## Next Session Tasks
 
-1. Add Room database for offline message caching
-2. Implement WebSocket connection for real-time updates
-3. Add QR code scanner for easy server setup
+1. Add message effects (slam, loud, invisible ink, etc.)
+2. Add sticker support
+3. Add audio message recording/playback
 4. Test with actual BlueBubbles server
+5. Consider adding group chat features (add/remove participants, rename)
+6. Performance optimization and memory profiling

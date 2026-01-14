@@ -1,10 +1,13 @@
 package com.bluebubbles.messaging.viewmodel
 
+import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.bluebubbles.messaging.data.models.ConnectionState
 import com.bluebubbles.messaging.data.models.Conversation
+import com.bluebubbles.messaging.data.models.Participant
 import com.bluebubbles.messaging.data.repository.ChatRepository
+import com.bluebubbles.messaging.data.repository.ContactRepository
 import com.bluebubbles.messaging.data.repository.ServerRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -19,13 +22,15 @@ data class ConversationsUiState(
   val isRefreshing: Boolean = false,
   val error: String? = null,
   val connectionState: ConnectionState = ConnectionState.Disconnected,
-  val searchQuery: String = ""
+  val searchQuery: String = "",
+  val contactPhotos: Map<String, Uri> = emptyMap() // address -> photo URI
 )
 
 @HiltViewModel
 class ConversationsViewModel @Inject constructor(
   private val chatRepository: ChatRepository,
-  private val serverRepository: ServerRepository
+  private val serverRepository: ServerRepository,
+  private val contactRepository: ContactRepository
 ) : ViewModel() {
 
   private val _uiState = MutableStateFlow(ConversationsUiState())
@@ -42,8 +47,10 @@ class ConversationsViewModel @Inject constructor(
 
       chatRepository.getConversations()
         .onSuccess { conversations ->
+          // Enrich with contact information
+          val enrichedConversations = enrichConversationsWithContacts(conversations)
           _uiState.value = _uiState.value.copy(
-            conversations = conversations,
+            conversations = enrichedConversations,
             isLoading = false
           )
         }
@@ -56,14 +63,49 @@ class ConversationsViewModel @Inject constructor(
     }
   }
 
+  private suspend fun enrichConversationsWithContacts(conversations: List<Conversation>): List<Conversation> {
+    val contactPhotos = mutableMapOf<String, Uri>()
+
+    return conversations.map { conversation ->
+      val enrichedParticipants = conversation.participants.map { participant ->
+        // Try to find contact info
+        val contactInfo = contactRepository.findContactByAddress(participant.address)
+
+        if (contactInfo != null) {
+          // Cache photo URI
+          contactInfo.photoUri?.let { contactPhotos[participant.address] = it }
+
+          // Update participant with contact name if available
+          participant.copy(
+            displayName = contactInfo.displayName.ifEmpty { participant.displayName },
+            firstName = contactInfo.displayName.split(" ").firstOrNull(),
+            lastName = contactInfo.displayName.split(" ").drop(1).joinToString(" ").takeIf { it.isNotEmpty() },
+            avatarUrl = contactInfo.photoUri?.toString()
+          )
+        } else {
+          participant
+        }
+      }
+
+      conversation.copy(participants = enrichedParticipants)
+    }.also {
+      // Update contact photos map in state
+      _uiState.value = _uiState.value.copy(contactPhotos = contactPhotos)
+    }
+  }
+
   fun refresh() {
     viewModelScope.launch {
       _uiState.value = _uiState.value.copy(isRefreshing = true)
 
-      chatRepository.getConversations()
+      // Clear contact cache for fresh data
+      contactRepository.clearCache()
+
+      chatRepository.getConversations(forceRefresh = true)
         .onSuccess { conversations ->
+          val enrichedConversations = enrichConversationsWithContacts(conversations)
           _uiState.value = _uiState.value.copy(
-            conversations = conversations,
+            conversations = enrichedConversations,
             isRefreshing = false
           )
         }

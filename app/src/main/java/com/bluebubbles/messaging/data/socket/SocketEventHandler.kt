@@ -9,11 +9,20 @@ import com.google.gson.JsonObject
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
+
+data class TypingIndicatorState(
+  val chatGuid: String,
+  val isTyping: Boolean,
+  val senderAddress: String? = null
+)
 
 @Singleton
 class SocketEventHandler @Inject constructor(
@@ -28,6 +37,9 @@ class SocketEventHandler @Inject constructor(
 
   private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
   private val gson = Gson()
+
+  private val _typingIndicators = MutableSharedFlow<TypingIndicatorState>(replay = 0)
+  val typingIndicators: SharedFlow<TypingIndicatorState> = _typingIndicators.asSharedFlow()
 
   fun startListening() {
     socketManager.events
@@ -149,10 +161,20 @@ class SocketEventHandler @Inject constructor(
     try {
       val chatGuid = data.get("chatGuid")?.asString ?: return
       val isTyping = data.get("display")?.asBoolean ?: false
-      val senderGuid = data.get("senderGuid")?.asString
+      val senderAddress = data.get("senderGuid")?.asString
+        ?: data.getAsJsonObject("handle")?.get("address")?.asString
 
-      // TODO: Emit typing indicator event to UI
-      Log.d(TAG, "Typing indicator: $chatGuid isTyping=$isTyping sender=$senderGuid")
+      scope.launch {
+        _typingIndicators.emit(
+          TypingIndicatorState(
+            chatGuid = chatGuid,
+            isTyping = isTyping,
+            senderAddress = senderAddress
+          )
+        )
+      }
+
+      Log.d(TAG, "Typing indicator: $chatGuid isTyping=$isTyping sender=$senderAddress")
     } catch (e: Exception) {
       Log.e(TAG, "Error handling typing indicator", e)
     }

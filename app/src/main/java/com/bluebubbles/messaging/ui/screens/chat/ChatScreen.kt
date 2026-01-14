@@ -1,8 +1,18 @@
 package com.bluebubbles.messaging.ui.screens.chat
 
 import android.net.Uri
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.*
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -28,10 +38,13 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Popup
+import androidx.compose.ui.window.PopupProperties
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.bluebubbles.messaging.data.models.Attachment
 import com.bluebubbles.messaging.data.models.Message
+import com.bluebubbles.messaging.data.models.ReactionType
 import com.bluebubbles.messaging.ui.components.*
 import com.bluebubbles.messaging.ui.theme.*
 import com.bluebubbles.messaging.viewmodel.ChatViewModel
@@ -49,6 +62,7 @@ fun ChatScreen(
   var showAttachmentPicker by remember { mutableStateOf(false) }
   var selectedAttachments by remember { mutableStateOf<List<SelectedAttachment>>(emptyList()) }
   var fullscreenAttachment by remember { mutableStateOf<Attachment?>(null) }
+  var reactionPickerMessage by remember { mutableStateOf<Message?>(null) }
 
   // Attachment picker bottom sheet
   if (showAttachmentPicker) {
@@ -82,6 +96,30 @@ fun ChatScreen(
         password = uiState.serverPassword ?: "",
         onDismiss = { fullscreenAttachment = null }
       )
+    }
+  }
+
+  // Reaction picker overlay
+  reactionPickerMessage?.let { message ->
+    Box(
+      modifier = Modifier
+        .fillMaxSize()
+        .background(BackgroundDark.copy(alpha = 0.5f))
+        .clickable { reactionPickerMessage = null }
+    ) {
+      Popup(
+        alignment = Alignment.Center,
+        onDismissRequest = { reactionPickerMessage = null },
+        properties = PopupProperties(focusable = true)
+      ) {
+        ReactionPicker(
+          onReactionSelected = { reactionType ->
+            viewModel.sendReaction(message.guid, reactionType)
+            reactionPickerMessage = null
+          },
+          onDismiss = { reactionPickerMessage = null }
+        )
+      }
     }
   }
 
@@ -135,22 +173,35 @@ fun ChatScreen(
       )
     },
     bottomBar = {
-      MessageInput(
-        text = uiState.messageText,
-        onTextChange = viewModel::updateMessageText,
-        onSendClick = {
-          viewModel.sendMessage(selectedAttachments)
-          selectedAttachments = emptyList()
-        },
-        isSending = uiState.isSending,
-        replyMessage = uiState.replyToMessage,
-        onClearReply = viewModel::clearReply,
-        onAttachmentClick = { showAttachmentPicker = true },
-        selectedAttachments = selectedAttachments,
-        onRemoveAttachment = { attachment ->
-          selectedAttachments = selectedAttachments.filter { it != attachment }
+      Column {
+        // Typing indicator
+        AnimatedVisibility(
+          visible = uiState.isOtherTyping,
+          enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
+          exit = slideOutVertically(targetOffsetY = { it }) + fadeOut()
+        ) {
+          TypingIndicator(
+            participantName = uiState.typingParticipant
+          )
         }
-      )
+
+        MessageInput(
+          text = uiState.messageText,
+          onTextChange = viewModel::updateMessageText,
+          onSendClick = {
+            viewModel.sendMessage(selectedAttachments)
+            selectedAttachments = emptyList()
+          },
+          isSending = uiState.isSending,
+          replyMessage = uiState.replyToMessage,
+          onClearReply = viewModel::clearReply,
+          onAttachmentClick = { showAttachmentPicker = true },
+          selectedAttachments = selectedAttachments,
+          onRemoveAttachment = { attachment ->
+            selectedAttachments = selectedAttachments.filter { it != attachment }
+          }
+        )
+      }
     },
     containerColor = BackgroundDark
   ) { paddingValues ->
@@ -185,7 +236,8 @@ fun ChatScreen(
               message = message,
               serverUrl = uiState.serverUrl ?: "",
               serverPassword = uiState.serverPassword ?: "",
-              onLongPress = { viewModel.setReplyToMessage(message) },
+              onLongPress = { reactionPickerMessage = message },
+              onDoubleTap = { viewModel.setReplyToMessage(message) },
               onAttachmentClick = { fullscreenAttachment = it }
             )
           }
@@ -220,96 +272,120 @@ fun ChatScreen(
   }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun MessageBubble(
   message: Message,
   serverUrl: String,
   serverPassword: String,
   onLongPress: () -> Unit,
+  onDoubleTap: () -> Unit,
   onAttachmentClick: (Attachment) -> Unit
 ) {
   val isFromMe = message.isFromMe
+  val hasReactions = message.associatedMessages.isNotEmpty()
 
-  Column(
+  Box(
     modifier = Modifier.fillMaxWidth(),
-    horizontalAlignment = if (isFromMe) Alignment.End else Alignment.Start
+    contentAlignment = if (isFromMe) Alignment.CenterEnd else Alignment.CenterStart
   ) {
-    // Attachments
-    if (message.hasAttachments) {
-      Column(
-        modifier = Modifier.padding(bottom = if (message.text != null) 4.dp else 0.dp),
-        verticalArrangement = Arrangement.spacedBy(4.dp)
-      ) {
-        message.attachments.forEach { attachment ->
-          MessageAttachment(
-            attachment = attachment,
-            serverUrl = serverUrl,
-            password = serverPassword,
-            isFromMe = isFromMe,
-            onFullscreenClick = onAttachmentClick
-          )
-        }
-      }
-    }
-
-    // Text bubble (only if there's text)
-    if (message.text != null || !message.hasAttachments) {
-      Box(
-        modifier = Modifier
-          .widthIn(max = 280.dp)
-          .clip(
-            RoundedCornerShape(
-              topStart = 16.dp,
-              topEnd = 16.dp,
-              bottomStart = if (isFromMe) 16.dp else 4.dp,
-              bottomEnd = if (isFromMe) 4.dp else 16.dp
-            )
-          )
-          .background(
-            if (isFromMe) {
-              Brush.linearGradient(listOf(CyanPrimary, CyanDark))
-            } else {
-              Brush.linearGradient(listOf(CardBackground, SurfaceDark))
-            }
-          )
-          .clickable(onClick = onLongPress)
-          .padding(12.dp)
-      ) {
-        Column {
-          message.text?.let { text ->
-            Text(
-              text = text,
-              style = MaterialTheme.typography.bodyLarge,
-              color = if (isFromMe) BackgroundDark else TextPrimary
+    Column(
+      horizontalAlignment = if (isFromMe) Alignment.End else Alignment.Start
+    ) {
+      // Attachments
+      if (message.hasAttachments) {
+        Column(
+          modifier = Modifier.padding(bottom = if (message.text != null) 4.dp else 0.dp),
+          verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+          message.attachments.forEach { attachment ->
+            MessageAttachment(
+              attachment = attachment,
+              serverUrl = serverUrl,
+              password = serverPassword,
+              isFromMe = isFromMe,
+              onFullscreenClick = onAttachmentClick
             )
           }
+        }
+      }
 
-          Spacer(modifier = Modifier.height(4.dp))
-
-          Row(
-            horizontalArrangement = Arrangement.End,
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.align(Alignment.End)
-          ) {
-            Text(
-              text = formatTime(message.dateCreated),
-              style = MaterialTheme.typography.labelSmall,
-              color = if (isFromMe) BackgroundDark.copy(alpha = 0.7f) else TextMuted
-            )
-
-            if (isFromMe) {
-              Spacer(modifier = Modifier.width(4.dp))
-              Icon(
-                imageVector = when {
-                  message.isRead -> Icons.Default.DoneAll
-                  message.isDelivered -> Icons.Default.Done
-                  else -> Icons.Default.Schedule
-                },
-                contentDescription = null,
-                modifier = Modifier.size(14.dp),
-                tint = if (message.isRead) GreenAccent else BackgroundDark.copy(alpha = 0.7f)
+      // Text bubble (only if there's text)
+      if (message.text != null || !message.hasAttachments) {
+        Box {
+          Box(
+            modifier = Modifier
+              .widthIn(max = 280.dp)
+              .clip(
+                RoundedCornerShape(
+                  topStart = 16.dp,
+                  topEnd = 16.dp,
+                  bottomStart = if (isFromMe) 16.dp else 4.dp,
+                  bottomEnd = if (isFromMe) 4.dp else 16.dp
+                )
               )
+              .background(
+                if (isFromMe) {
+                  Brush.linearGradient(listOf(CyanPrimary, CyanDark))
+                } else {
+                  Brush.linearGradient(listOf(CardBackground, SurfaceDark))
+                }
+              )
+              .combinedClickable(
+                onClick = { },
+                onLongClick = onLongPress,
+                onDoubleClick = onDoubleTap
+              )
+              .padding(12.dp)
+          ) {
+            Column {
+              message.text?.let { text ->
+                Text(
+                  text = text,
+                  style = MaterialTheme.typography.bodyLarge,
+                  color = if (isFromMe) BackgroundDark else TextPrimary
+                )
+              }
+
+              Spacer(modifier = Modifier.height(4.dp))
+
+              Row(
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.align(Alignment.End)
+              ) {
+                Text(
+                  text = formatTime(message.dateCreated),
+                  style = MaterialTheme.typography.labelSmall,
+                  color = if (isFromMe) BackgroundDark.copy(alpha = 0.7f) else TextMuted
+                )
+
+                if (isFromMe) {
+                  Spacer(modifier = Modifier.width(4.dp))
+                  Icon(
+                    imageVector = when {
+                      message.isRead -> Icons.Default.DoneAll
+                      message.isDelivered -> Icons.Default.Done
+                      else -> Icons.Default.Schedule
+                    },
+                    contentDescription = null,
+                    modifier = Modifier.size(14.dp),
+                    tint = if (message.isRead) GreenAccent else BackgroundDark.copy(alpha = 0.7f)
+                  )
+                }
+              }
             }
+          }
+
+          // Reaction bubble (positioned at bottom corner of message)
+          if (hasReactions) {
+            ReactionBubble(
+              reactions = message.associatedMessages,
+              isFromMe = isFromMe,
+              modifier = Modifier.align(
+                if (isFromMe) Alignment.BottomStart else Alignment.BottomEnd
+              )
+            )
           }
         }
       }
@@ -529,4 +605,76 @@ private fun AttachmentPreview(
 
 private fun formatTime(date: Date): String {
   return SimpleDateFormat("h:mm a", Locale.getDefault()).format(date)
+}
+
+@Composable
+private fun TypingIndicator(
+  participantName: String?
+) {
+  Row(
+    modifier = Modifier
+      .fillMaxWidth()
+      .background(SurfaceDark)
+      .padding(horizontal = 16.dp, vertical = 8.dp),
+    horizontalArrangement = Arrangement.spacedBy(8.dp),
+    verticalAlignment = Alignment.CenterVertically
+  ) {
+    // Animated dots
+    TypingDots()
+
+    Text(
+      text = if (participantName != null) {
+        "$participantName is typing..."
+      } else {
+        "typing..."
+      },
+      style = MaterialTheme.typography.bodySmall,
+      color = TextMuted
+    )
+  }
+}
+
+@Composable
+private fun TypingDots() {
+  val infiniteTransition = rememberInfiniteTransition(label = "typing")
+
+  Row(
+    modifier = Modifier
+      .clip(RoundedCornerShape(12.dp))
+      .background(CardBackground)
+      .padding(horizontal = 12.dp, vertical = 8.dp),
+    horizontalArrangement = Arrangement.spacedBy(4.dp)
+  ) {
+    repeat(3) { index ->
+      val delay = index * 150
+
+      val alpha by infiniteTransition.animateFloat(
+        initialValue = 0.3f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+          animation = tween(600, delayMillis = delay),
+          repeatMode = RepeatMode.Reverse
+        ),
+        label = "dot$index"
+      )
+
+      val offsetY by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = -4f,
+        animationSpec = infiniteRepeatable(
+          animation = tween(600, delayMillis = delay),
+          repeatMode = RepeatMode.Reverse
+        ),
+        label = "offset$index"
+      )
+
+      Box(
+        modifier = Modifier
+          .offset(y = offsetY.dp)
+          .size(8.dp)
+          .clip(CircleShape)
+          .background(CyanPrimary.copy(alpha = alpha))
+      )
+    }
+  }
 }
